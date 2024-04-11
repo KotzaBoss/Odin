@@ -1038,11 +1038,12 @@ foreign lib {
 
 	// Screen-space-related functions
 
-	GetMouseRay        :: proc(mousePosition: Vector2, camera: Camera) -> Ray ---                      // Get a ray trace from mouse position
 	GetCameraMatrix    :: proc(camera: Camera) -> Matrix ---                                           // Get camera transform matrix (view matrix)
 	GetCameraMatrix2D  :: proc(camera: Camera2D) -> Matrix ---                                         // Get camera 2d transform matrix
-	GetWorldToScreen   :: proc(position: Vector3, camera: Camera) -> Vector2 ---                       // Get the screen space position for a 3d world space position
 	GetScreenToWorld2D :: proc(position: Vector2, camera: Camera2D) -> Vector2 ---                     // Get the world space position for a 2d camera screen space position
+	GetScreenToWorldRay   :: proc(mousePosition: Vector2, camera: Camera) -> Ray ---                   // Get a ray trace from screen position (i.e mouse)
+	GetScreenToWorldRayEx :: proc(mousePosition: Vector2, camera: Camera, width, height: int) -> Ray ---  // Get a ray trace from screen position (i.e mouse) in a viewport
+	GetWorldToScreen   :: proc(position: Vector3, camera: Camera) -> Vector2 ---                       // Get the screen space position for a 3d world space position
 	GetWorldToScreenEx :: proc(position: Vector3, camera: Camera, width, height: c.int) -> Vector2 --- // Get size position for a 3d world space position
 	GetWorldToScreen2D :: proc(position: Vector2, camera: Camera2D) -> Vector2 ---                     // Get the screen space position for a 2d camera world space position
 
