@@ -106,14 +106,22 @@ when ODIN_OS == .Windows {
 		"system:Shell32.lib",
 	}
 } else when ODIN_OS == .Linux  {
-	foreign import lib {
-		// Note(bumbread): I'm not sure why in `linux/` folder there are
-		// multiple copies of raylib.so, but since these bindings are for
-		// particular version of the library, I better specify it. Ideally,
-		// though, it's best specified in terms of major (.so.4)
-		"linux/libraylib.so.500" when RAYLIB_SHARED else "linux/libraylib.a",
-		"system:dl",
-		"system:pthread",
+	when RAYLIB_SHARED {
+		foreign import lib {
+			// Note(bumbread): I'm not sure why in `linux/` folder there are
+			// multiple copies of raylib.so, but since these bindings are for
+			// particular version of the library, I better specify it. Ideally,
+			// though, it's best specified in terms of major (.so.4)
+			"linux/libraylib.so.500",
+			"system:dl",
+			"system:pthread",
+		}
+	} else {
+		foreign import lib {
+			"linux/libraylib.a",
+			"system:dl",
+			"system:pthread",
+		}
 	}
 } else when ODIN_OS == .Darwin {
 	foreign import lib {
@@ -133,7 +141,7 @@ VERSION_MINOR :: 0
 VERSION_PATCH :: 0
 VERSION :: "5.0"
 
-PI :: 3.14159265358979323846 
+PI :: 3.14159265358979323846
 DEG2RAD :: PI/180.0
 RAD2DEG :: 180.0/PI
 
@@ -226,7 +234,7 @@ RenderTexture :: struct {
 	id:       c.uint,             // OpenGL framebuffer object id
 	texture: Texture,             // Color buffer attachment texture
 	depth:   Texture,             // Depth buffer attachment texture
-} 
+}
 
 // RenderTexture2D type, same as RenderTexture
 RenderTexture2D :: RenderTexture
@@ -248,7 +256,7 @@ GlyphInfo :: struct {
 	offsetY:  c.int,              // Character offset Y when drawing
 	advanceX: c.int,              // Character advance position X
 	image:    Image,              // Character image data
-} 
+}
 
 // Font type, includes texture and charSet array data
 Font :: struct {
@@ -996,11 +1004,12 @@ foreign lib {
 
 	// Screen-space-related functions
 
-	GetMouseRay        :: proc(mousePosition: Vector2, camera: Camera) -> Ray ---                      // Get a ray trace from mouse position
 	GetCameraMatrix    :: proc(camera: Camera) -> Matrix ---                                           // Get camera transform matrix (view matrix)
 	GetCameraMatrix2D  :: proc(camera: Camera2D) -> Matrix ---                                         // Get camera 2d transform matrix
-	GetWorldToScreen   :: proc(position: Vector3, camera: Camera) -> Vector2 ---                       // Get the screen space position for a 3d world space position
 	GetScreenToWorld2D :: proc(position: Vector2, camera: Camera2D) -> Vector2 ---                     // Get the world space position for a 2d camera screen space position
+	GetScreenToWorldRay   :: proc(mousePosition: Vector2, camera: Camera) -> Ray ---                   // Get a ray trace from screen position (i.e mouse)
+	GetScreenToWorldRayEx :: proc(mousePosition: Vector2, camera: Camera, width, height: int) -> Ray ---  // Get a ray trace from screen position (i.e mouse) in a viewport
+	GetWorldToScreen   :: proc(position: Vector3, camera: Camera) -> Vector2 ---                       // Get the screen space position for a 3d world space position
 	GetWorldToScreenEx :: proc(position: Vector3, camera: Camera, width, height: c.int) -> Vector2 --- // Get size position for a 3d world space position
 	GetWorldToScreen2D :: proc(position: Vector2, camera: Camera2D) -> Vector2 ---                     // Get the screen space position for a 2d camera world space position
 
@@ -1129,7 +1138,7 @@ foreign lib {
 		#panic("IsMouseButtonUp was broken in Raylib 5.0 but should be fixed in Raylib > 5.0. Remove this panic and the when block around it and also remove the workaround version of IsMouseButtonUp just after the end of the 'foreign lib {' block.")
 		IsMouseButtonUp       :: proc(button: MouseButton) -> bool ---
 	}
-	
+
 	GetMouseX             :: proc() -> c.int ---                      // Returns mouse position X
 	GetMouseY             :: proc() -> c.int ---                      // Returns mouse position Y
 	GetMousePosition      :: proc() -> Vector2 ---                    // Returns mouse position XY
@@ -1169,6 +1178,17 @@ foreign lib {
 
 	UpdateCamera :: proc(camera: ^Camera, mode: CameraMode) ---                                   // Set camera mode (multiple camera modes available)
 	UpdateCameraPro :: proc(camera: ^Camera, movement: Vector3, rotation: Vector3, zoom: f32) --- // Update camera movement/rotation
+
+	// Camera movement
+	CameraMoveForward  :: proc(camera: ^Camera, distance: c.float, moveInWorldPlane: bool) ---
+	CameraMoveUp       :: proc(camera: ^Camera, distance: c.float) ---
+	CameraMoveRight    :: proc(camera: ^Camera, distance: c.float, moveInWorldPlane: bool) ---
+	CameraMoveToTarget :: proc(camera: ^Camera, delta: c.float) ---
+
+	// Camera rotation
+	CameraYaw   :: proc(camera: ^Camera, angle: c.float, rotateAroundTarget: bool) ---
+	CameraPitch :: proc(camera: ^Camera, angle: c.float, lockView: bool, rotateAroundTarget: bool, rotateUp: bool) ---
+	CameraRoll  :: proc(camera: ^Camera, angle: c.float, rotateAroundTarget: bool) ---
 
 	//------------------------------------------------------------------------------------
 	// Basic Shapes Drawing Functions (Module: shapes)
@@ -1667,23 +1687,23 @@ IsGestureDetected :: proc "c" (gesture: Gesture) -> bool {
 
 
 // Text formatting with variables (sprintf style)
-TextFormat :: proc(text: cstring, args: ..any) -> cstring { 
+TextFormat :: proc(text: cstring, args: ..any) -> cstring {
 	@static buffers: [MAX_TEXTFORMAT_BUFFERS][MAX_TEXT_BUFFER_LENGTH]byte
 	@static index: u32
-	
+
 	buffer := buffers[index][:]
 	mem.zero_slice(buffer)
-	
+
 	index = (index+1)%MAX_TEXTFORMAT_BUFFERS
-	
+
 	str := fmt.bprintf(buffer[:len(buffer)-1], string(text), ..args)
 	buffer[len(str)] = 0
-	
+
 	return cstring(raw_data(buffer))
 }
 
 // Text formatting with variables (sprintf style) and allocates (must be freed with 'MemFree')
-TextFormatAlloc :: proc(text: cstring, args: ..any) -> cstring { 
+TextFormatAlloc :: proc(text: cstring, args: ..any) -> cstring {
 	str := fmt.tprintf(string(text), ..args)
 	return strings.clone_to_cstring(str, MemAllocator())
 }
@@ -1708,7 +1728,7 @@ MemAllocatorProc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
 	case .Free:
 		MemFree(old_memory)
 		return nil, nil
-	
+
 	case .Resize, .Resize_Non_Zeroed:
 		ptr := MemRealloc(old_memory, c.uint(size))
 		if ptr == nil {
@@ -1717,9 +1737,9 @@ MemAllocatorProc :: proc(allocator_data: rawptr, mode: mem.Allocator_Mode,
 		}
 		data = mem.byte_slice(ptr, size)
 		return
-	
+
 	case .Free_All, .Query_Features, .Query_Info:
 		return nil, .Mode_Not_Implemented
-	}	
+	}
 	return nil, .Mode_Not_Implemented
 }
