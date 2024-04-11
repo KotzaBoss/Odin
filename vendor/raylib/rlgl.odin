@@ -354,6 +354,10 @@ CullMode :: enum c.int {
 
 @(default_calling_convention="c")
 foreign lib {
+	rlSetClipPlanes :: proc(near, far: c.double) ---
+	rlGetCullDistanceNear :: proc() -> c.double ---
+	rlGetCullDistanceFar :: proc() -> c.double ---
+
 	//------------------------------------------------------------------------------------
 	// Functions Declaration - Matrix operations
 	//------------------------------------------------------------------------------------
