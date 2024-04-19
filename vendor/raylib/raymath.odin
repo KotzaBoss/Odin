@@ -3,6 +3,85 @@ package raylib
 import "core:math"
 import "core:math/linalg"
 
+// CAUTION: Copy pasted from raylib.odin, propably not the best idea but i cant be bothered
+//          with looking into it atm
+
+when ODIN_OS == .Windows {
+	when RAYLIB_SHARED {
+		@(extra_linker_flags="/NODEFAULTLIB:msvcrt")
+		foreign import lib {
+			"windows/raylibdll.lib",
+			"system:Winmm.lib",
+			"system:Gdi32.lib",
+			"system:User32.lib",
+			"system:Shell32.lib",
+		}
+	} else {
+		@(extra_linker_flags="/NODEFAULTLIB:libcmt")
+		foreign import lib {
+			"windows/raylib.lib",
+			"system:Winmm.lib",
+			"system:Gdi32.lib",
+			"system:User32.lib",
+			"system:Shell32.lib",
+		}
+	}
+} else when ODIN_OS == .Linux  {
+	when RAYLIB_SHARED {
+		foreign import lib {
+			// Note(bumbread): I'm not sure why in `linux/` folder there are
+			// multiple copies of raylib.so, but since these bindings are for
+			// particular version of the library, I better specify it. Ideally,
+			// though, it's best specified in terms of major (.so.4)
+			"linux/libraylib.so.500",
+			"system:dl",
+			"system:pthread",
+		}
+	} else {
+		foreign import lib {
+			"linux/libraylib.a",
+			"system:dl",
+			"system:pthread",
+		}
+	}
+} else when ODIN_OS == .Darwin {
+	when ODIN_ARCH == .arm64 {
+		when RAYLIB_SHARED {
+			foreign import lib {
+				"macos-arm64/libraylib.500.dylib",
+				"system:Cocoa.framework",
+				"system:OpenGL.framework",
+				"system:IOKit.framework",
+			}
+		} else {
+			foreign import lib {
+				"macos-arm64/libraylib.a",
+				"system:Cocoa.framework",
+				"system:OpenGL.framework",
+				"system:IOKit.framework",
+			}
+		}
+	} else {
+		when RAYLIB_SHARED {
+			foreign import lib {
+				"macos/libraylib.500.dylib",
+				"system:Cocoa.framework",
+				"system:OpenGL.framework",
+				"system:IOKit.framework",
+			}
+		} else {
+			foreign import lib {
+				"macos/libraylib.a",
+				"system:Cocoa.framework",
+				"system:OpenGL.framework",
+				"system:IOKit.framework",
+			}
+		}
+	}
+} else {
+	foreign import lib "system:raylib"
+}
+
 EPSILON :: 0.000001
 
 
@@ -532,6 +611,11 @@ Vector3Unproject :: proc "c" (source: Vector3, projection: Matrix, view: Matrix)
 	return Vector3{qtransformed.x/qtransformed.w, qtransformed.y/qtransformed.w, qtransformed.z/qtransformed.w}
 }
 
+
+@(default_calling_convention="c")
+foreign lib {
+	Vector3Perpendicular :: proc(v: Vector3) -> Vector3 ---
+}
 
 
 //----------------------------------------------------------------------------------
